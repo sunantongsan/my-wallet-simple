@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Crypto Wallet</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            margin-top: 50px;
+            background-color: #f0f0f0;
+        }
+        h1 {
+            color: #333;
+        }
+        .wallet-container {
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: white;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+        button {
+            background-color: #007bff;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 10px;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        input {
+            padding: 8px;
+            margin: 10px;
+            width: 250px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+        }
+        p {
+            font-size: 16px;
+            word-break: break-all;
+        }
+        .hidden {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="wallet-container">
+        <h1>My Crypto Wallet</h1>
+        <div id="create-wallet">
+            <button onclick="createWallet()">Create New Wallet</button>
+            <div>
+                <input type="text" id="privateKeyInput" placeholder="Enter private key to import">
+                <button onclick="importWallet()">Import Wallet</button>
+            </div>
+        </div>
+        <div id="wallet-details" class="hidden">
+            <p><strong>Address:</strong> <span id="address"></span></p>
+            <p><strong>Balance:</strong> <span id="balance">0</span> ETH</p>
+            <h3>Send Coins</h3>
+            <input type="text" id="recipient" placeholder="Recipient Address">
+            <input type="text" id="amount" placeholder="Amount (ETH)">
+            <button onclick="sendTransaction()">Send</button>
+        </div>
+    </div>
+
+    <!-- โหลด Ethers.js จาก CDN -->
+    <script src="https://cdn.ethers.io/lib/ethers-5.7.2.umd.min.js"></script>
+    <script>
+        let wallet = null;
+        let provider = null;
+
+        // แทนที่ด้วย RPC URL ของเครือข่ายคุณ
+        const RPC_URL = 'YOUR_NETWORK_RPC_URL'; // เช่น http://localhost:8545
+        provider = new ethers.providers.JsonRpcProvider(RPC_URL);
+
+        // สร้างกระเป๋าใหม่
+        function createWallet() {
+            wallet = ethers.Wallet.createRandom();
+            document.getElementById('create-wallet').classList.add('hidden');
+            document.getElementById('wallet-details').classList.remove('hidden');
+            document.getElementById('address').textContent = wallet.address;
+            fetchBalance(wallet.address);
+            alert(`Wallet created!\nAddress: ${wallet.address}\nPrivate Key: ${wallet.privateKey}\nSave this private key securely!`);
+        }
+
+        // นำเข้ากระเป๋าด้วย private key
+        function importWallet() {
+            const privateKey = document.getElementById('privateKeyInput').value;
+            try {
+                wallet = new ethers.Wallet(privateKey, provider);
+                document.getElementById('create-wallet').classList.add('hidden');
+                document.getElementById('wallet-details').classList.remove('hidden');
+                document.getElementById('address').textContent = wallet.address;
+                fetchBalance(wallet.address);
+            } catch (error) {
+                alert('Invalid private key');
+            }
+        }
+
+        // ดึงยอดเหรียญ
+        async function fetchBalance(address) {
+            try {
+                const balance = await provider.getBalance(address);
+                document.getElementById('balance').textContent = ethers.utils.formatEther(balance);
+            } catch (error) {
+                alert('Error fetching balance: ' + error.message);
+            }
+        }
+
+        // ส่งเหรียญ
+        async function sendTransaction() {
+            if (!wallet) return alert('No wallet loaded');
+            const recipient = document.getElementById('recipient').value;
+            const amount = document.getElementById('amount').value;
+            try {
+                const tx = {
+                    to: recipient,
+                    value: ethers.utils.parseEther(amount),
+                };
+                const signer = wallet.connect(provider);
+                const txResponse = await signer.sendTransaction(tx);
+                alert(`Transaction sent! Hash: ${txResponse.hash}`);
+                fetchBalance(wallet.address);
+            } catch (error) {
+                alert('Transaction failed: ' + error.message);
+            }
+        }
+    </script>
+</body>
+</html>
