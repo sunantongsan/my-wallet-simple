@@ -76,15 +76,19 @@
         </div>
     </div>
 
-    <!-- โหลด Ethers.js จาก CDN -->
-    <script src="https://cdn.ethers.io/lib/ethers-5.7.2.umd.min.js"></script>
+    <!-- ใช้ Ethers.js จากไฟล์ในเครื่อง -->
+    <script src="ethers.min.js"></script>
     <script>
         let wallet = null;
         let provider = null;
 
         // แทนที่ด้วย RPC URL ของเครือข่ายคุณ
         const RPC_URL = 'YOUR_NETWORK_RPC_URL'; // เช่น http://localhost:8545
-        provider = new ethers.providers.JsonRpcProvider(RPC_URL);
+        try {
+            provider = new ethers.providers.JsonRpcProvider(RPC_URL);
+        } catch (error) {
+            console.error('Failed to connect to provider:', error.message);
+        }
 
         // สร้างกระเป๋าใหม่และ private key
         function createWallet() {
@@ -121,6 +125,10 @@
 
         // ดึงยอดเหรียญ
         async function fetchBalance(address) {
+            if (!provider) {
+                document.getElementById('balance').textContent = 'No provider';
+                return;
+            }
             try {
                 const balance = await provider.getBalance(address);
                 document.getElementById('balance').textContent = ethers.utils.formatEther(balance);
@@ -140,6 +148,10 @@
             const amount = document.getElementById('amount').value.trim();
             if (!recipient || !amount) {
                 alert('Please enter recipient address and amount');
+                return;
+            }
+            if (!provider) {
+                alert('No provider connected');
                 return;
             }
             try {
