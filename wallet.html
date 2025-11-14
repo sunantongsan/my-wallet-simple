@@ -34,6 +34,14 @@
         button:hover {
             background-color: #218838;
         }
+        .copy-btn {
+            background-color: #007bff;
+            padding: 5px 10px;
+            font-size: 14px;
+        }
+        .copy-btn:hover {
+            background-color: #0056b3;
+        }
         input {
             padding: 8px;
             margin: 10px;
@@ -67,8 +75,11 @@
             </div>
         </div>
         <div id="wallet-details" class="hidden">
-            <p class="info-box"><strong>Address:</strong> <span id="address"></span></p>
-            <p class="info-box"><strong>Balance:</strong> <span id="balance">0</span> ETH</p>
+            <p class="info-box"><strong>Address:</strong> <span id="address"></span>
+                <button class="copy-btn" onclick="copyText('address')">Copy</button></p>
+            <p class="info-box"><strong>Private Key:</strong> <span id="privateKey" class="hidden"></span>
+                <button class="copy-btn" onclick="copyText('privateKey')">Copy Private Key</button></p>
+            <p class="info-box"><strong>Balance:</strong> <span id="balance">Not connected</span> ETH</p>
             <h3>Send Coins</h3>
             <input type="text" id="recipient" placeholder="Recipient Address">
             <input type="text" id="amount" placeholder="Amount (ETH)">
@@ -76,29 +87,64 @@
         </div>
     </div>
 
-    <!-- ใช้ Ethers.js จากไฟล์ในเครื่อง -->
-    <script src="ethers.min.js"></script>
+    <!-- ลองโหลด Ethers.js จากไฟล์ในเครื่องก่อน ถ้าไม่มี fallback ไป CDN -->
     <script>
+        function loadEthers() {
+            if (typeof ethers !== 'undefined') return Promise.resolve();
+            return new Promise((resolve, reject) => {
+                const script = document.createElement('script');
+                script.src = 'ethers.min.js';
+                script.onload = () => resolve();
+                script.onerror = () => {
+                    const fallback = document.createElement('script');
+                    fallback.src = 'https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js';
+                    fallback.onload = () => resolve();
+                    fallback.onerror = () => reject(new Error('Failed to load Ethers.js'));
+                    document.head.appendChild(fallback);
+                };
+                document.head.appendChild(script);
+            });
+        }
+
+        loadEthers().then(() => {
+            console.log('Ethers.js loaded');
+            initializeWallet();
+        }).catch(error => {
+            alert('Error loading Ethers.js: ' + error.message);
+        });
+
         let wallet = null;
         let provider = null;
+        let privateKey = '';
 
-        // แทนที่ด้วย RPC URL ของเครือข่ายคุณ
-        const RPC_URL = 'YOUR_NETWORK_RPC_URL'; // เช่น http://localhost:8545
-        try {
-            provider = new ethers.providers.JsonRpcProvider(RPC_URL);
-        } catch (error) {
-            console.error('Failed to connect to provider:', error.message);
+        function initializeWallet() {
+            // ตั้งค่า RPC URL (ตัวอย่างสำหรับ Ganache หรือเครือข่ายทดสอบ)
+            const RPC_URL = 'http://localhost:7545'; // เปลี่ยนเป็น URL ของคุณ หรือปล่อยว่างถ้ายังไม่มี
+            if (RPC_URL && RPC_URL !== 'YOUR_NETWORK_RPC_URL') {
+                try {
+                    provider = new ethers.providers.JsonRpcProvider(RPC_URL);
+                } catch (error) {
+                    console.error('Provider error:', error);
+                    provider = null;
+                }
+            }
         }
 
         // สร้างกระเป๋าใหม่และ private key
         function createWallet() {
             try {
                 wallet = ethers.Wallet.createRandom();
+                privateKey = wallet.privateKey;
                 document.getElementById('create-wallet').classList.add('hidden');
                 document.getElementById('wallet-details').classList.remove('hidden');
                 document.getElementById('address').textContent = wallet.address;
-                fetchBalance(wallet.address);
-                alert(`Wallet created successfully!\nAddress: ${wallet.address}\nPrivate Key: ${wallet.privateKey}\n\nPlease copy and save the private key in a secure place!`);
+                document.getElementById('privateKey').textContent = privateKey;
+                if (provider) {
+                    fetchBalance(wallet.address);
+                } else {
+                    document.getElementById('balance').textContent = 'Not connected';
+                }
+                alert(`Wallet created successfully!\nAddress: ${wallet.address}\nPrivate Key: ${privateKey}\n\nPlease copy and save the private key in a secure place!`);
             } catch (error) {
                 alert('Error creating wallet: ' + error.message);
             }
@@ -106,17 +152,23 @@
 
         // นำเข้ากระเป๋าด้วย private key
         function importWallet() {
-            const privateKey = document.getElementById('privateKeyInput').value.trim();
-            if (!privateKey) {
+            const inputPrivateKey = document.getElementById('privateKeyInput').value.trim();
+            if (!inputPrivateKey) {
                 alert('Please enter a private key');
                 return;
             }
             try {
-                wallet = new ethers.Wallet(privateKey, provider);
+                wallet = new ethers.Wallet(inputPrivateKey);
+                privateKey = inputPrivateKey;
                 document.getElementById('create-wallet').classList.add('hidden');
                 document.getElementById('wallet-details').classList.remove('hidden');
                 document.getElementById('address').textContent = wallet.address;
-                fetchBalance(wallet.address);
+                document.getElementById('privateKey').textContent = privateKey;
+                if (provider) {
+                    fetchBalance(wallet.address);
+                } else {
+                    document.getElementById('balance').textContent = 'Not connected';
+                }
                 alert('Wallet imported successfully!\nAddress: ' + wallet.address);
             } catch (error) {
                 alert('Invalid private key: ' + error.message);
@@ -126,7 +178,7 @@
         // ดึงยอดเหรียญ
         async function fetchBalance(address) {
             if (!provider) {
-                document.getElementById('balance').textContent = 'No provider';
+                document.getElementById('balance').textContent = 'Not connected';
                 return;
             }
             try {
@@ -151,7 +203,7 @@
                 return;
             }
             if (!provider) {
-                alert('No provider connected');
+                alert('No provider connected. Set RPC URL to enable transactions.');
                 return;
             }
             try {
@@ -166,6 +218,16 @@
             } catch (error) {
                 alert('Transaction failed: ' + error.message);
             }
+        }
+
+        // ฟังก์ชันคัดลอกข้อความ
+        function copyText(elementId) {
+            const text = document.getElementById(elementId).textContent;
+            navigator.clipboard.writeText(text).then(() => {
+                alert('Copied to clipboard: ' + text);
+            }).catch(err => {
+                alert('Failed to copy: ' + err);
+            });
         }
     </script>
 </body>
