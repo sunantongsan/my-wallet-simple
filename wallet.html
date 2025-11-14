@@ -62,6 +62,11 @@
             border-radius: 5px;
             margin: 10px 0;
         }
+        .warning {
+            color: #d32f2f;
+            font-size: 14px;
+            margin-top: 5px;
+        }
     </style>
 </head>
 <body>
@@ -77,8 +82,9 @@
         <div id="wallet-details" class="hidden">
             <p class="info-box"><strong>Address:</strong> <span id="address"></span>
                 <button class="copy-btn" onclick="copyText('address')">Copy</button></p>
-            <p class="info-box"><strong>Private Key:</strong> <span id="privateKey" class="hidden"></span>
-                <button class="copy-btn" onclick="copyText('privateKey')">Copy Private Key</button></p>
+            <p class="info-box"><strong>Private Key:</strong> <span id="privateKey"></span>
+                <button class="copy-btn" onclick="copyText('privateKey')">Copy</button>
+                <div class="warning">Warning: Keep your private key secure!</div></p>
             <p class="info-box"><strong>Balance:</strong> <span id="balance">Not connected</span> ETH</p>
             <h3>Send Coins</h3>
             <input type="text" id="recipient" placeholder="Recipient Address">
@@ -119,7 +125,7 @@
 
         function initializeWallet() {
             // ตั้งค่า RPC URL (ตัวอย่างสำหรับ Ganache หรือเครือข่ายทดสอบ)
-            const RPC_URL = 'http://localhost:7545'; // เปลี่ยนเป็น URL ของคุณ หรือปล่อยว่างถ้ายังไม่มี
+            const RPC_URL = ''; // ปล่อยว่างถ้ายังไม่มี หรือใส่ URL เช่น 'http://localhost:7545'
             if (RPC_URL && RPC_URL !== 'YOUR_NETWORK_RPC_URL') {
                 try {
                     provider = new ethers.providers.JsonRpcProvider(RPC_URL);
